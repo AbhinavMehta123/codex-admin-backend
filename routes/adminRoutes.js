@@ -7,7 +7,7 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 // -------------------------
-// Admin Registration (only once)
+// Admin Registration 
 // -------------------------
 router.post("/register", async (req, res) => {
   try {
@@ -43,11 +43,21 @@ router.post("/register", async (req, res) => {
 // -------------------------
 // Admin Login
 // -------------------------
+// -------------------------
+// Admin Login (FIXED)
+// -------------------------
 router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const admin = await Admin.findOne({ username });
+    // 1. .trim() removes accidental spaces from mobile keyboards
+    const cleanUsername = username.trim();
+
+    // 2. Case-insensitive search: finds "Abhinav" even if you type "abhinav"
+    const admin = await Admin.findOne({ 
+      username: { $regex: new RegExp("^" + cleanUsername + "$", "i") } 
+    });
+
     if (!admin) return res.status(404).json({ error: "Admin not found" });
 
     const valid = await bcrypt.compare(password, admin.password);
