@@ -16,13 +16,19 @@ router.post("/register", async (req, res) => {
     if (!username || !password)
       return res.status(400).json({ error: "Username and password required" });
 
-    const existing = await Admin.findOne({ username });
+    // FIX: Force lowercase and remove spaces
+    const cleanUsername = username.trim().toLowerCase();
+
+    const existing = await Admin.findOne({ username: cleanUsername });
     if (existing) {
       return res.status(400).json({ error: "Admin already exists" });
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const admin = await Admin.create({ username, password: hashed });
+    const admin = await Admin.create({ 
+      username: cleanUsername, // Save clean version
+      password: hashed 
+    });
 
     const token = jwt.sign(
       { id: admin._id, username: admin.username },
@@ -30,34 +36,25 @@ router.post("/register", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    res.json({
-      success: true,
-      message: "Admin account created successfully",
-      token,
-    });
+    res.json({ success: true, message: "Admin account created successfully", token });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // -------------------------
-// Admin Login
-// -------------------------
-// -------------------------
-// Admin Login (FIXED)
+// Admin Login 
 // -------------------------
 router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // 1. .trim() removes accidental spaces from mobile keyboards
-    const cleanUsername = username.trim();
+    // FIX: Force lowercase and remove spaces to match the registration format
+    const cleanUsername = username.trim().toLowerCase();
 
-    // 2. Case-insensitive search: finds "Abhinav" even if you type "abhinav"
-    const admin = await Admin.findOne({ 
-      username: { $regex: new RegExp("^" + cleanUsername + "$", "i") } 
-    });
-
+    // Now searching for "abhinav" will find "abhinav", even if phone typed "Abhinav "
+    const admin = await Admin.findOne({ username: cleanUsername });
+    
     if (!admin) return res.status(404).json({ error: "Admin not found" });
 
     const valid = await bcrypt.compare(password, admin.password);
